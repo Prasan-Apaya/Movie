@@ -1,6 +1,7 @@
 package com.prasan.movie.controller;
 
 import com.prasan.movie.models.MovieBase;
+import com.prasan.movie.service.MovieService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -17,12 +18,19 @@ public class LatestMovieController {
     @Autowired
     RestTemplate restTemplate;
     HttpHeaders headers;
-    @Value("${movie.api.url}")
-    String url;
+    @Value("${movie.api.now.playing.url}")
+    String latestMovieUrl;
+
+    @Value("${movie.api.popular.url}")
+    String popularMovieUrl;
+
+    @Autowired
+    MovieService movieService;
+
     /**
      * To do proper configuration
      */
-    public LatestMovieController(RestTemplate restTemplate){
+    public LatestMovieController(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
         headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -31,12 +39,19 @@ public class LatestMovieController {
     }
 
     @GetMapping("/get-latest-movies")
-    public ResponseEntity getLatestMoviesRunning(){
+    public ResponseEntity<MovieBase> getLatestMoviesRunning() {
         HttpEntity<?> request = new HttpEntity<>(headers);
-
-        ResponseEntity<MovieBase> result = restTemplate.exchange(url, HttpMethod.GET, request, MovieBase.class);
-        MovieBase latestMoviesResponse = result.getBody();
-
+        ResponseEntity<MovieBase> latestMovieResult = restTemplate.exchange(latestMovieUrl, HttpMethod.GET, request, MovieBase.class);
+        MovieBase latestMoviesResponse = latestMovieResult.getBody();
+        movieService.saveAll(latestMoviesResponse.getResults());
         return ResponseEntity.ok().body(latestMoviesResponse);
+    }
+
+    @GetMapping("/get-popular-movies")
+    public ResponseEntity<MovieBase> getPopularMovies(){
+        HttpEntity<?> request = new HttpEntity<>(headers);
+        ResponseEntity<MovieBase> popularMovieResult = restTemplate.exchange(popularMovieUrl, HttpMethod.GET, request, MovieBase.class);
+        movieService.saveAll(popularMovieResult.getBody().getResults());
+        return ResponseEntity.ok().body(popularMovieResult.getBody());
     }
 }
